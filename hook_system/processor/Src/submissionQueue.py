@@ -161,8 +161,8 @@ def processQueue():
                 processed_file = timeQueue.pop()
                 os.remove(filePath)
 
-                notified = __sendEmail(emailAddr,jobId)
-                #not sure what the best thing to do here is. . .
+                if not __sendEmail(emailAddr,jobId):
+                    threading.Thread(target=__sendEmail, args=[emailAddr, jobId]).start(()
                 endtime = time.time()
                 processing_per_file = (endtime-start)/num_files
                 print("Overall processing time for "+processed_file[0]+" files is: "+ str(processing_per_file))
@@ -187,7 +187,18 @@ def processQueue():
                 pass
 
 
+def __retryFailed(emailAddr: str, jobId: str):
+    maxFails = 3
 
+    while maxFails > 0:
+        print("Retrying {} more time{}.".format(maxFails, "s" if maxFails > 1 else ""))
+
+        time.sleep(10)
+
+        if __sendEmail(emailAddr, jobId):
+            return
+
+        maxFails -=1
 
 def __sendEmail(emailAddr: str, jobId: str) -> bool:
     try:
@@ -202,9 +213,11 @@ def __sendEmail(emailAddr: str, jobId: str) -> bool:
         s.login(config["EMAIL"]["FromAddr"], config["EMAIL"]["FromPassword"])
         s.sendmail(config["EMAIL"]["FromAddr"], emailAddr, msg.as_string())
         s.quit()
+        return True
     except Exception as e:
         print("Failed to send email notification")
         print(e)
+        return False
 
 
 def estimateQueue(jobId: str) -> int:
